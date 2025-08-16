@@ -738,3 +738,207 @@ def handle_delete_schedule(call: CallbackQuery):
 print("Bot running...")
 if __name__ == "__main__":
     bot.infinity_polling()
+
+
+@bot.message_handler(commands=["setforcesub"]) 
+def admin_set_force_subscription(message: Message):
+    if not users_repo:
+        bot.reply_to(message, "DB unavailable.")
+        return
+    admin = users_repo.get(message.from_user.id)
+    if not admin or admin.get("role") != "admin":
+        bot.reply_to(message, "Not authorized.")
+        return
+    parts = message.text.strip().split()
+    if len(parts) < 2:
+        bot.reply_to(message, "Usage: /setforcesub on|off")
+        return
+    val = parts[1].lower() in ("on", "true", "1", "yes")
+    SettingsRepository(db).set("force_subscription", val)
+    bot.reply_to(message, f"force_subscription set to {val}")
+
+
+@bot.message_handler(commands=["setforcechannels"]) 
+def admin_set_force_channels(message: Message):
+    if not users_repo:
+        bot.reply_to(message, "DB unavailable.")
+        return
+    admin = users_repo.get(message.from_user.id)
+    if not admin or admin.get("role") != "admin":
+        bot.reply_to(message, "Not authorized.")
+        return
+    # Example: /setforcechannels @Ch1 @Ch2 @Ch3
+    parts = message.text.strip().split()
+    channels = [p for p in parts[1:] if p.startswith("@")]
+    if not channels:
+        bot.reply_to(message, "Usage: /setforcechannels @Ch1 @Ch2 ...")
+        return
+    SettingsRepository(db).set("force_channels", channels)
+    bot.reply_to(message, f"force_channels updated: {', '.join(channels)}")
+
+
+@bot.message_handler(commands=["setpremiumprice"]) 
+def admin_set_premium_price(message: Message):
+    if not users_repo:
+        bot.reply_to(message, "DB unavailable.")
+        return
+    admin = users_repo.get(message.from_user.id)
+    if not admin or admin.get("role") != "admin":
+        bot.reply_to(message, "Not authorized.")
+        return
+    parts = message.text.strip().split()
+    if len(parts) < 2 or not parts[1].isdigit():
+        bot.reply_to(message, "Usage: /setpremiumprice 40")
+        return
+    price = int(parts[1])
+    SettingsRepository(db).set("premium_price", price)
+    bot.reply_to(message, f"premium_price set to {price}")
+
+
+@bot.message_handler(commands=["setpaymentchannel"]) 
+def admin_set_payment_channel(message: Message):
+    if not users_repo:
+        bot.reply_to(message, "DB unavailable.")
+        return
+    admin = users_repo.get(message.from_user.id)
+    if not admin or admin.get("role") != "admin":
+        bot.reply_to(message, "Not authorized.")
+        return
+    parts = message.text.strip().split()
+    if len(parts) < 2 or not parts[1].startswith("@"):
+        bot.reply_to(message, "Usage: /setpaymentchannel @PaymentsChannel")
+        return
+    SettingsRepository(db).set("payment_channel", parts[1])
+    bot.reply_to(message, f"payment_channel set to {parts[1]}")
+
+
+@bot.message_handler(commands=["addtelebirr"]) 
+def admin_add_telebirr(message: Message):
+    if not users_repo:
+        bot.reply_to(message, "DB unavailable.")
+        return
+    admin = users_repo.get(message.from_user.id)
+    if not admin or admin.get("role") != "admin":
+        bot.reply_to(message, "Not authorized.")
+        return
+    parts = message.text.strip().split()
+    if len(parts) < 2:
+        bot.reply_to(message, "Usage: /addtelebirr 0912345678")
+        return
+    current = SettingsRepository(db).get("telebirr_numbers", [])
+    if parts[1] not in current:
+        current.append(parts[1])
+    SettingsRepository(db).set("telebirr_numbers", current)
+    bot.reply_to(message, f"telebirr_numbers: {', '.join(current)}")
+
+
+@bot.message_handler(commands=["addcbe"]) 
+def admin_add_cbe(message: Message):
+    if not users_repo:
+        bot.reply_to(message, "DB unavailable.")
+        return
+    admin = users_repo.get(message.from_user.id)
+    if not admin or admin.get("role") != "admin":
+        bot.reply_to(message, "Not authorized.")
+        return
+    parts = message.text.strip().split()
+    if len(parts) < 2:
+        bot.reply_to(message, "Usage: /addcbe 1000123456")
+        return
+    current = SettingsRepository(db).get("cbe_numbers", [])
+    if parts[1] not in current:
+        current.append(parts[1])
+    SettingsRepository(db).set("cbe_numbers", current)
+    bot.reply_to(message, f"cbe_numbers: {', '.join(current)}")
+
+
+@bot.message_handler(commands=["setmaxnotes"]) 
+def admin_set_max_notes(message: Message):
+    if not users_repo:
+        bot.reply_to(message, "DB unavailable.")
+        return
+    admin = users_repo.get(message.from_user.id)
+    if not admin or admin.get("role") != "admin":
+        bot.reply_to(message, "Not authorized.")
+        return
+    # Usage: /setmaxnotes regular 5  OR  /setmaxnotes premium 10
+    parts = message.text.strip().split()
+    if len(parts) < 3 or parts[1] not in ("regular", "premium") or not parts[2].isdigit():
+        bot.reply_to(message, "Usage: /setmaxnotes regular|premium <num>")
+        return
+    key = f"max_notes_{parts[1]}"
+    SettingsRepository(db).set(key, int(parts[2]))
+    bot.reply_to(message, f"{key} set to {parts[2]}")
+
+
+@bot.message_handler(commands=["setmaxquestions"]) 
+def admin_set_max_questions(message: Message):
+    if not users_repo:
+        bot.reply_to(message, "DB unavailable.")
+        return
+    admin = users_repo.get(message.from_user.id)
+    if not admin or admin.get("role") != "admin":
+        bot.reply_to(message, "Not authorized.")
+        return
+    # Usage: /setmaxquestions regular 5  OR  /setmaxquestions premium 10
+    parts = message.text.strip().split()
+    if len(parts) < 3 or parts[1] not in ("regular", "premium") or not parts[2].isdigit():
+        bot.reply_to(message, "Usage: /setmaxquestions regular|premium <num>")
+        return
+    key = f"max_questions_{parts[1]}"
+    SettingsRepository(db).set(key, int(parts[2]))
+    bot.reply_to(message, f"{key} set to {parts[2]}")
+
+
+@bot.message_handler(commands=["maintenancemode"]) 
+def admin_maintenance_mode(message: Message):
+    if not users_repo:
+        bot.reply_to(message, "DB unavailable.")
+        return
+    admin = users_repo.get(message.from_user.id)
+    if not admin or admin.get("role") != "admin":
+        bot.reply_to(message, "Not authorized.")
+        return
+    parts = message.text.strip().split()
+    if len(parts) < 2:
+        bot.reply_to(message, "Usage: /maintenancemode on|off")
+        return
+    val = parts[1].lower() in ("on", "true", "1", "yes")
+    SettingsRepository(db).set("maintenance_mode", val)
+    bot.reply_to(message, f"maintenance_mode set to {val}")
+
+
+@bot.message_handler(commands=["addadmin"]) 
+def admin_add_admin(message: Message):
+    if not users_repo:
+        bot.reply_to(message, "DB unavailable.")
+        return
+    req = users_repo.get(message.from_user.id)
+    if not req or req.get("role") != "admin":
+        bot.reply_to(message, "Not authorized.")
+        return
+    parts = message.text.strip().split()
+    if len(parts) < 2 or not parts[1].isdigit():
+        bot.reply_to(message, "Usage: /addadmin <user_id>")
+        return
+    target_id = int(parts[1])
+    users_repo.set_role(target_id, "admin")
+    bot.reply_to(message, f"User {target_id} promoted to admin.")
+
+
+@bot.message_handler(commands=["removeadmin"]) 
+def admin_remove_admin(message: Message):
+    if not users_repo:
+        bot.reply_to(message, "DB unavailable.")
+        return
+    req = users_repo.get(message.from_user.id)
+    if not req or req.get("role") != "admin":
+        bot.reply_to(message, "Not authorized.")
+        return
+    parts = message.text.strip().split()
+    if len(parts) < 2 or not parts[1].isdigit():
+        bot.reply_to(message, "Usage: /removeadmin <user_id>")
+        return
+    target_id = int(parts[1])
+    users_repo.set_role(target_id, "user")
+    bot.reply_to(message, f"User {target_id} demoted from admin.")

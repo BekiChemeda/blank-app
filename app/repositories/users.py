@@ -38,6 +38,12 @@ class UsersRepository:
             upsert=True,
         )
 
+    def set_user_type(self, user_id: int, user_type: str) -> None:
+        self.collection.update_one({"id": user_id}, {"$set": {"type": user_type}})
+
+    def set_role(self, user_id: int, role: str) -> None:
+        self.collection.update_one({"id": user_id}, {"$set": {"role": role}})
+
     def bump_notes_today(self, user_id: int) -> None:
         self.collection.update_one({"id": user_id}, {"$inc": {"notes_today": 1}})
 
