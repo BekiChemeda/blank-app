@@ -30,17 +30,23 @@ from .utils import is_subscribed, home_keyboard
 
 
 cfg = get_config()
-init_db()
-db = get_db()
-settings_repo = SettingsRepository(db)
-users_repo = UsersRepository(db)
-channels_repo = ChannelsRepository(db)
-payments_repo = PaymentsRepository(db)
-schedules_repo = SchedulesRepository(db)
+# Defer DB connection until runtime; guard when Mongo is unavailable
+try:
+    init_db()
+    db = get_db()
+except Exception:
+    db = None
+
+settings_repo = SettingsRepository(db) if db else None
+users_repo = UsersRepository(db) if db else None
+channels_repo = ChannelsRepository(db) if db else None
+payments_repo = PaymentsRepository(db) if db else None
+schedules_repo = SchedulesRepository(db) if db else None
 
 bot = TeleBot(cfg.bot_token)
-scheduler = QuizScheduler(db, bot)
-scheduler.start()
+if db:
+    scheduler = QuizScheduler(db, bot)
+    scheduler.start()
 
 pending_notes: dict[int, dict] = {}
 pending_subscriptions: dict[int, dict] = {}
@@ -587,7 +593,7 @@ def subscribe_premium_start(call: CallbackQuery):
         InlineKeyboardButton("USDT ERC-20", callback_data="pay_erc"),
     )
     kb.row(InlineKeyboardButton("🔙 Home", callback_data="home"))
-    amount = cfg.premium_price
+    amount = cfg.premium_price if not settings_repo else settings_repo.get("premium_price", cfg.premium_price)
     bot.delete_message(call.message.chat.id, call.message.message_id)
     bot.send_message(user_id, f"Premium is {amount} ETB or ~0.5 USDT per month. Choose payment method:", reply_markup=kb)
 
@@ -599,13 +605,13 @@ def choose_payment_method(call: CallbackQuery):
     pending_subscriptions[user_id] = {"method": method}
 
     if method == "telebirr":
-        numbers = cfg.telebirr_numbers
+        numbers = (settings_repo.get("telebirr_numbers", cfg.telebirr_numbers) if settings_repo else cfg.telebirr_numbers)
     elif method == "cbe":
-        numbers = cfg.cbe_numbers
+        numbers = (settings_repo.get("cbe_numbers", cfg.cbe_numbers) if settings_repo else cfg.cbe_numbers)
     else:
         numbers = ["TRC20 Wallet: <provide>", "ERC20 Wallet: <provide>"]
 
-    amount = cfg.premium_price
+    amount = (settings_repo.get("premium_price", cfg.premium_price) if settings_repo else cfg.premium_price)
     number_list = "\n".join(numbers)
     bot.delete_message(call.message.chat.id, call.message.message_id)
     bot.send_message(user_id, f"Send {amount} ETB or 0.5 USDT to:\n{number_list}\nAfter payment send a screenshot.")
@@ -644,7 +650,7 @@ def confirm_payment(call: CallbackQuery):
         bot.send_message(user_id, "Please send a photo of your payment.")
         return
 
-    amount = cfg.premium_price
+    amount = (settings_repo.get("premium_price", cfg.premium_price) if settings_repo else cfg.premium_price)
     payments_repo.insert(user_id, method, amount, screenshot_id)
 
     # Notify admins: for demo, anyone with role admin in DB
@@ -674,11 +680,13 @@ def accept_payment(call: CallbackQuery):
     user_id = int(call.data.split("_")[1])
     users_repo.set_premium(user_id, 30)
     payments_repo.update_status(user_id, "accepted")
-    bot.send_message(user_id, f"Your premium subscription for {cfg.premium_price} Birr has been approved!")
+    amount = (settings_repo.get("premium_price", cfg.premium_price) if settings_repo else cfg.premium_price)
+    bot.send_message(user_id, f"Your premium subscription for {amount} Birr has been approved!")
     now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-    if cfg.payment_channel:
+    pay_channel = (settings_repo.get("payment_channel", cfg.payment_channel) if settings_repo else cfg.payment_channel)
+    if pay_channel:
         try:
-            bot.send_message(cfg.payment_channel, f"New Premium Subscription\nUser ID: {user_id}\nAmount Paid: {cfg.premium_price}\nDate: {now}")
+            bot.send_message(pay_channel, f"New Premium Subscription\nUser ID: {user_id}\nAmount Paid: {amount}\nDate: {now}")
         except Exception:
             pass
 
