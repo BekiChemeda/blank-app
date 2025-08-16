@@ -1,19 +1,28 @@
-# 🎈 Blank app template
+# SmartQuiz Bot (MongoDB)
 
-A simple Streamlit app template for you to modify!
+Telegram bot that turns notes into quizzes, supports user-managed channels, delivery delays, and scheduling with MongoDB persistence.
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://blank-app-template.streamlit.app/)
+## Quick start
 
-### How to run it on your own machine
+1. Copy env and fill values
+```bash
+cp .env.example .env
+```
 
-1. Install the requirements
+2. Install dependencies
+```bash
+pip install -r requirements.txt
+```
 
-   ```
-   $ pip install -r requirements.txt
-   ```
+3. Run
+```bash
+python -m app.bot
+```
 
-2. Run the app
-
-   ```
-   $ streamlit run streamlit_app.py
-   ```
+## Features
+- Gemini-powered quiz generation
+- User-managed channels (verify bot as admin)
+- Choose target: PM or any added channel
+- Delay between questions (5s - 60s)
+- Schedule quiz delivery (APScheduler + MongoDB)
+- Premium, quotas, force-subscription, payments (basic flow)
